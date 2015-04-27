@@ -1,12 +1,17 @@
 package util.file;
 
+import java.io.BufferedReader;
 import java.io.File;
+import java.io.FileReader;
+import java.io.IOException;
 import java.math.BigDecimal;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Scanner;
 
-public class MyOpenFile {
+public class MyReadFile {
 	private String filePath;
 	private int numColumn = 0;
 	private int numRow = 0;
@@ -19,7 +24,7 @@ public class MyOpenFile {
 		return numRow;
 	}
 
-	public MyOpenFile(String filePath) {
+	public MyReadFile(String filePath) {
 		super();
 		this.filePath = filePath;
 	}

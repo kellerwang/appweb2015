@@ -11,7 +11,7 @@ import java.util.List;
 
 import com.model.SepModel;
 
-import util.file.MyOpenFile;
+import util.file.MyReadFile;
 
 public class FeatureSelect {
 
@@ -70,8 +70,8 @@ public class FeatureSelect {
 
 	public static void main(String[] args) {
 		String filePath = "data" + File.separator + "Trace.txt";
-		String outputFile = "output" + File.separator + "result.txt";
-		MyOpenFile fileDate = new MyOpenFile(filePath);
+//		String outputFile = "output" + File.separator + "result.txt";
+		MyReadFile fileDate = new MyReadFile(filePath);
 		List<Double[]> data = fileDate.openfile();
 		double accuracy = 0;
 		List<Integer> cls = new ArrayList<Integer>();
