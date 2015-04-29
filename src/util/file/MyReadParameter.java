@@ -19,7 +19,6 @@ public class MyReadParameter {
 			reader = new BufferedReader(new FileReader(file));
 			String tempString = null;
 			while ((tempString = reader.readLine()) != null) {
-				System.out.println(tempString);
 				String[] strTempArray = tempString.split(",");
 				List<Double> tempList = new ArrayList<Double>();
 				for (int i = 1; i < strTempArray.length; i++) {

@@ -17,44 +17,9 @@ import util.distance.TSDistance;
 import util.file.MyReadFile;
 import util.file.MyReadParameter;
 import util.normalize.Normalize;
+import util.normalize.Symbolization;
 
 public class SAXFeatureSelect {
-
-	public static double[] getPPA(double[] data, int w) {
-		double[] dataNormalize = Normalize.normalize(data);
-		int length = dataNormalize.length;
-		if (length % w != 0) {
-			throw new RuntimeException("Length cannot be divisible by w!");
-		}
-		double[] result = new double[w];
-		for (int i = 0; i < w; i++) {
-			double sum = 0;
-			for (int j = (length / w) * i; j < (length / w) * (i + 1); j++) {
-				sum += dataNormalize[j];
-			}
-			result[i] = sum / (double) length * (double) w;
-		}
-		return result;
-	}
-
-	public static String getSAX(double[] data, int a,
-			Map<Integer, List<Double>> mapParameter) {
-		List<Double> parameterLisDoubles = mapParameter.get(a);
-		String resultString = "";
-		for (int i = 0; i < data.length; i++) {
-			char tempLabelChar = 'a';
-			for (int j = 0; j < parameterLisDoubles.size(); j++) {
-				// 上边界
-				if (data[i] > parameterLisDoubles.get(j)) {
-					tempLabelChar += 1;
-				} else {
-					break;
-				}
-			}
-			resultString += tempLabelChar;
-		}
-		return resultString;
-	}
 
 	public static void main(String[] args) {
 		// TODO Auto-generated method stub
@@ -78,8 +43,8 @@ public class SAXFeatureSelect {
 				for (int k = 0; k < ql; k++) {
 					ftr[k] = data.get(i)[1 + k + j];
 				}
-				ppa = getPPA(ftr, w);
-				sax = getSAX(ppa, a, mapParameter);
+				ppa = Symbolization.getPPA(ftr, w);
+				sax = Symbolization.getSAX(ppa, a, mapParameter);
 				if (augmentedTreeMap.containsKey(sax)) {
 					augmentedTreeMap.get(sax).add(
 							new ShapeletIndexModel(i, j, ftr));
