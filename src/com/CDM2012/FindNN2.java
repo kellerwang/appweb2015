@@ -13,7 +13,7 @@ public class FindNN2 {
 			for (int j = 0; j < y.length; j++) {
 				temp[j] = x[i + j];
 			}
-			dist[i] = TSDistance.normalizeDistanceOfEqualLength(y, temp);
+			dist[i] = TSDistance.normalizeDistanceOfEqualLength2(y, temp);
 		}
 		return getMinWithIndex(dist);
 	}

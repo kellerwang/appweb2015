@@ -1,116 +1,55 @@
 package kaile.sax;
 
 import java.io.File;
+import java.io.FileWriter;
+import java.io.IOException;
+import java.sql.Date;
+import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Random;
 
 import com.CDM2012.ClassifyFeats;
 import com.CDM2012.FindNN;
 import com.CDM2012.FindNN2;
+import com.model.AugmentedTreeMap;
 import com.model.SepModel;
 import com.model.ShapeletIndexModel;
 
+import util.config.ParameterConfig;
+import util.distance.SAXComputeMatrix;
 import util.distance.TSDistance;
 import util.file.MyReadFile;
 import util.file.MyReadParameter;
+import util.file.MyWriteFile;
 import util.math.MyArrayFunction;
 import util.normalize.Symbolization;
 
 public class SAXFeatureSelect2 {
-	private static final String filePathParameter = "data" + File.separator
-			+ "Gaussian";
-	private static final String filePath = "data" + File.separator
-			+ "ChlorineConcentration_TRAIN.txt";
 
-	private static final int w = 6;
-	private static final int a = 3;
-
-	public static Map<String, List<ShapeletIndexModel>> buildAugmentedTreeMap(
-			List<Double[]> data, Map<Integer, List<Double>> mapParameter,
-			int ql, int w, int a) {
-		Map<String, List<ShapeletIndexModel>> augmentedTreeMap = new HashMap<String, List<ShapeletIndexModel>>();
-		for (int i = 0; i < data.size(); i++) {
-			// the first column of data represents the classes.
-			for (int j = 0; j < data.get(i).length - ql; j++) {
-				double[] ftr = new double[ql];
-				double[] ppa = new double[w];
-				String sax = null;
-				for (int k = 0; k < ql; k++) {
-					ftr[k] = data.get(i)[1 + k + j];
-				}
-				ppa = Symbolization.getPPA(ftr, w);
-				sax = Symbolization.getSAX(ppa, a, mapParameter);
-				if (augmentedTreeMap.containsKey(sax)) {
-					augmentedTreeMap.get(sax).add(
-							new ShapeletIndexModel(i, j, ftr));
-				} else {
-					List<ShapeletIndexModel> tempShapeletIndexModels = new ArrayList<ShapeletIndexModel>();
-					tempShapeletIndexModels.add(new ShapeletIndexModel(i, j,
-							ftr));
-					augmentedTreeMap.put(sax, tempShapeletIndexModels);
-				}
-			}
-		}
-		return augmentedTreeMap;
-	}
-
-	public static Double[] saxComputeMatrix(List<Double[]> data, double[] ftr,
-			Map<Integer, List<Double>> mapParameter, List<Integer> indexX,
-			Map<String, List<ShapeletIndexModel>> augmentedTreeMap) {
-		Double[] dis = new Double[indexX.size()];
-		// signify the ftr
-		double[] ppa = Symbolization.getPPA(ftr, w);
-		String sax = Symbolization.getSAX(ppa, a, mapParameter);
-		if (augmentedTreeMap.containsKey(sax)) {
-//			long startTimeTreeCompute = System.currentTimeMillis();
-			List<ShapeletIndexModel> simList = augmentedTreeMap.get(sax);
-			for (int j = 0; j < simList.size(); j++) {
-				if (indexX.contains(simList.get(j).getRow())) {
-					double tempDistance = TSDistance
-							.normalizeDistanceOfEqualLength(ftr, simList.get(j)
-									.getFtr());
-					if (dis[indexX.indexOf(simList.get(j).getRow())] == null
-							|| dis[indexX.indexOf(simList.get(j).getRow())] > tempDistance) {
-						dis[indexX.indexOf(simList.get(j).getRow())] = tempDistance;
-					}
-				}
-			}
-//			long endTimeTreeCompute = System.currentTimeMillis();
-//			System.out.println("Time of Tree Compute:"
-//					+ (endTimeTreeCompute - startTimeTreeCompute));
-//			long startTimeMissingValue = System.currentTimeMillis();
-			// fill the missing value
-			for (int j = 0; j < dis.length; j++) {
-				if (dis[j] == null) {
-					double[] x = new double[data.get(indexX.get(j)).length - 1];
-					for (int it = 0; it < data.get(indexX.get(j)).length - 1; it++) {
-						x[it] = data.get(j)[it + 1];
-					}
-					dis[j] = FindNN2.findNN2(x, ftr);
-				}
-			}
-			// long endTimeMissingValue = System.currentTimeMillis();
-			// System.out.println("Time of Missing Value:"
-			// + (endTimeMissingValue - startTimeMissingValue));
-			return dis;
-		} else {
-			throw new RuntimeException("The Symbol is not in the Tree!");
-		}
-	}
-
-	public static void main(String[] args) {
+	public static void runNovelAlgorithm(String filePath, int ql, int w, int a,
+			int k) {
 		//
 		Map<Integer, List<Double>> mapParameter = MyReadParameter
-				.getBreakPointsParameter(filePathParameter);
+				.getBreakPointsParameter(ParameterConfig.GAUSSIAN_PARAMETER);
 		MyReadFile fileDate = new MyReadFile(filePath);
+		MyWriteFile.write2Log("Novel Algorithm");
+		MyWriteFile.write2Log(new SimpleDateFormat("yyyy-MM-dd HH:mm:ss")
+				.format(new Date(System.currentTimeMillis())));
+		MyWriteFile.write2Log("DataSet:" + filePath);
+		MyWriteFile.write2Log("k:" + k);
+		MyWriteFile.write2Log("ql:" + ql);
+		MyWriteFile.write2Log("w:" + w);
+		MyWriteFile.write2Log("a:" + a);
 		List<Double[]> data = fileDate.openfile();
 		List<Double[]> data2 = new ArrayList<Double[]>(data);
-		int ts = 0; // the location to find the first Shapelet
-		int ql = 30;
+		int ts = new Random().nextInt(data.size());// the location to find the
+													// first Shapelet
+		MyWriteFile.write2Log("First Shapelet Index:" + ts);
 		List<Integer> cls = new ArrayList<Integer>();
 		for (int i = 0; i < data.size(); i++) {
 			cls.add(data.get(i)[0].intValue());
@@ -122,26 +61,20 @@ public class SAXFeatureSelect2 {
 		int FTR = 1;
 		int iter = 1;
 		long startTime = System.currentTimeMillis();
-		List<Integer> indexX = new ArrayList<Integer>();
-		for (int i = 0; i < data.size(); i++) {
-			indexX.add(i);
-		}
-		List<Integer> dataX = new ArrayList<Integer>(indexX);
 		// build the sax tree
 		long startBuildTreeTime = System.currentTimeMillis();
-		Map<String, List<ShapeletIndexModel>> augmentedTreeMap = buildAugmentedTreeMap(
-				data, mapParameter, ql, w, a);
+		Map<String, List<ShapeletIndexModel>> augmentedTreeMap = AugmentedTreeMap
+				.buildAugmentedTreeMap(data, mapParameter, ql, w, a);
 		long endBuildTreeTime = System.currentTimeMillis();
-		System.out.println("Build Tree Time:"
+		MyWriteFile.write2Log("Build Tree Time:"
 				+ (endBuildTreeTime - startBuildTreeTime));
+		List<Integer> indexX = MyArrayFunction.getInteger0ToNList(data.size());
+		List<Integer> dataX = new ArrayList<Integer>(indexX);
 		long iterationTime = System.currentTimeMillis();
 		while (true) {
 			int r = data2.size();
 			int c = data2.get(0).length;
 			int[] cls2 = new int[r];
-			for (int i = 0; i < r; i++) {
-				cls2[i] = 0;
-			}
 			List<SepModel> seps = new ArrayList<SepModel>();
 			double[] ftr = new double[ql];
 			int cnt = 0;
@@ -149,15 +82,8 @@ public class SAXFeatureSelect2 {
 				for (int n = 0; n < ql; n++) {
 					ftr[n] = data2.get(ts)[i + n];
 				}
-//				long startComputeDistanceTime = System.currentTimeMillis();
-				Double[] dis = saxComputeMatrix(data, ftr, mapParameter,
-						indexX, augmentedTreeMap);
-				// long endComputeDistanceTime = System.currentTimeMillis();
-				// System.out.println("Compute Distance Time:"
-				// + (endComputeDistanceTime - startComputeDistanceTime));
-				for (int n = 0; n < dis.length; n++) {
-					dis[n] = dis[n] / Math.sqrt(ql);
-				}
+				Double[] dis = SAXComputeMatrix.saxComputeMatrix(data, ftr,
+						mapParameter, indexX, augmentedTreeMap, w, a);
 				SepModel sep = new SepModel(0.0, 0.0, 0.0, ql, i);
 				seps.add(sep);
 				for (double corr = 0.95; corr >= 0.65; corr = corr - 0.01) {
@@ -176,8 +102,7 @@ public class SAXFeatureSelect2 {
 					double l2 = (double) ind2.length;
 					double q = l1 / l2;
 					double curr = 0;
-
-					if (q > 0.2 && q < 5)
+					if (q > (1 / (double) k) && q < (1 - 1 / (double) k))
 						curr = (m2 - s2 - (m1 + s1));
 					else {
 						curr = 0;
@@ -194,7 +119,7 @@ public class SAXFeatureSelect2 {
 			int indx = 0;
 			for (int i = 0; i < seps.size(); i++) {
 				double q = seps.get(i).getQ();
-				if (q > 0.2 && q < 5) {
+				if (q > (1 / (double) k) && q < (1 - 1 / (double) k)) {
 					indx = i;
 					break;
 				}
@@ -203,11 +128,8 @@ public class SAXFeatureSelect2 {
 			for (int n = 0; n < ql; n++) {
 				ftr[n] = data2.get(ts)[seps.get(indx).getIndex() + n];
 			}
-			Double[] dis = saxComputeMatrix(data, ftr, mapParameter, indexX,
-					augmentedTreeMap);
-			for (int i = 0; i < dis.length; i++) {
-				dis[i] = dis[i] / Math.sqrt(ql);
-			}
+			Double[] dis = SAXComputeMatrix.saxComputeMatrix(data, ftr,
+					mapParameter, indexX, augmentedTreeMap, w, a);
 			double corr = seps.get(indx).getCorr();
 			Integer[] ind1 = MyArrayFunction.findSmallerThan(dis,
 					Math.sqrt(2 * (1 - corr)));
@@ -217,19 +139,17 @@ public class SAXFeatureSelect2 {
 			double m2 = MyArrayFunction.meanOfArrayByIndex(dis, ind2);
 			double s1 = MyArrayFunction.stdOfArrayByIndex(dis, ind1);
 			double s2 = MyArrayFunction.stdOfArrayByIndex(dis, ind2);
-			Double[] dist = saxComputeMatrix(data, ftr, mapParameter, dataX,
-					augmentedTreeMap);
-			for (int i = 0; i < dist.length; i++) {
-				dist[i] = dist[i] / Math.sqrt(ql);
-			}
+			Double[] dist = SAXComputeMatrix.saxComputeMatrix(data, ftr,
+					mapParameter, dataX, augmentedTreeMap, w, a);
 			DIS.add(dist);
 			double tempACC = ClassifyFeats.classifyFeats(DIS, cls);
 			ACC.add(tempACC);
 			List<Double[]> temp = new ArrayList<Double[]>();
 			temp.add(dis);
 			accuracy = ClassifyFeats.classifyFeats(temp, cls1);
-			System.out.println("DIS accuracy:" + tempACC + " time:" + FTR);
-			System.out.println("Temp accuracy:" + accuracy + " time:" + FTR);
+			MyWriteFile.write2Log("DIS accuracy:" + tempACC + " time:" + FTR);
+			MyWriteFile.write2Log("Temp accuracy:" + accuracy + " time:" + FTR);
+			MyWriteFile.write2FTRFile(ftr, iter);
 			if (tempACC == 1) {
 				break;
 			}
@@ -256,36 +176,23 @@ public class SAXFeatureSelect2 {
 			if (ind1.length < 2 || ind2.length < 2) {
 				break;
 			}
-			int[] arrayIndex = new int[dis.length];
-			for (int i = 0; i < arrayIndex.length; i++) {
-				arrayIndex[i] = i;
-			}
-			for (int i = 0; i < dis.length - 1; i++) {
-				for (int j = i + 1; j < dis.length; j++) {
-					if (dis[i] < dis[j]) {
-						double tempDouble = dis[i];
-						int p = arrayIndex[i];
-						dis[i] = dis[j];
-						arrayIndex[i] = arrayIndex[j];
-						dis[j] = tempDouble;
-						arrayIndex[j] = p;
-					}
-				}
-			}
+			int[] arrayIndex = MyArrayFunction.getIndexArrayAfterSort(dis);
 			for (int i = 0; i < r; i++) {
 				if (cls2[arrayIndex[i]] == 0) {
 					ts = X.indexOf(arrayIndex[i]);
 					break;
 				}
 			}
-			System.out.println("Iteration Time:"
+			MyWriteFile.write2Log("Iteration Time:"
 					+ (System.currentTimeMillis() - iterationTime) + " iter:"
 					+ iter);
 			iterationTime = System.currentTimeMillis();
 			iter = iter + 1;
 		}
 		long endTime = System.currentTimeMillis();
-		System.out.println("Running Time:" + (endTime - startTime));
+		MyWriteFile.write2Log("Running Time:" + (endTime - startTime));
+		MyWriteFile.write2Log("\n");
+		MyWriteFile.write2ACCFile(ACC);
 	}
 
 }

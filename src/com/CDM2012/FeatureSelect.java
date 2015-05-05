@@ -4,24 +4,31 @@ import java.io.BufferedWriter;
 import java.io.File;
 import java.io.FileOutputStream;
 import java.io.OutputStreamWriter;
+import java.sql.Date;
+import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
+import java.util.Random;
 
 import com.model.SepModel;
 
+import util.distance.ComputeMatrix;
 import util.file.MyReadFile;
+import util.file.MyWriteFile;
 import util.math.MyArrayFunction;
 
 public class FeatureSelect {
 
-	public static void main(String[] args) {
-		// String filePath = "data" + File.separator
-		// + "ChlorineConcentration_TRAIN.txt";
-		String filePath = "data" + File.separator
-				+ "Trace.txt";
+	public static void runCDM2012Algorithm(String filePath, int ql, int k) {
 		MyReadFile fileDate = new MyReadFile(filePath);
+		MyWriteFile.write2Log("CDM2012 Algorithm");
+		MyWriteFile.write2Log(new SimpleDateFormat("yyyy-MM-dd HH:mm:ss")
+				.format(new Date(System.currentTimeMillis())));
+		MyWriteFile.write2Log("DataSet:" + filePath);
+		MyWriteFile.write2Log("k:" + k);
+		MyWriteFile.write2Log("ql:" + ql);
 		List<Double[]> data = fileDate.openfile();
 		double accuracy = 0;
 		List<Integer> cls = new ArrayList<Integer>();
@@ -29,9 +36,10 @@ public class FeatureSelect {
 			cls.add(data.get(i)[0].intValue());
 		}
 		List<Integer> cls1 = new ArrayList<Integer>(cls);
-		int ts = 0; // the location to find the first Shapelet
+		int ts = new Random().nextInt(data.size()); // the location to find the
+													// first Shapelet
+		MyWriteFile.write2Log("First Shapelet Index:" + ts);
 		List<Double[]> data2 = new ArrayList<Double[]>(data);
-		int ql = 50;
 		int FTR = 1;
 		int iter = 1;
 		List<Double[]> DIS = new ArrayList<Double[]>();
@@ -53,14 +61,7 @@ public class FeatureSelect {
 				for (int n = 0; n < ql; n++) {
 					ftr[n] = data2.get(ts)[i + n];
 				}
-				long startComputeDistanceTime = System.currentTimeMillis();
 				Double[] dis = ComputeMatrix.computeMatrix(ftr, data2);
-				long endComputeDistanceTime = System.currentTimeMillis();
-				// System.out.println("Compute Distance Time:"
-				// + (endComputeDistanceTime - startComputeDistanceTime));
-				for (int n = 0; n < dis.length; n++) {
-					dis[n] = dis[n] / Math.sqrt(ql);
-				}
 				SepModel sep = new SepModel(0.0, 0.0, 0.0, ql, i);
 				seps.add(sep);
 				for (double corr = 0.95; corr >= 0.65; corr = corr - 0.01) {
@@ -74,13 +75,11 @@ public class FeatureSelect {
 					double m2 = MyArrayFunction.meanOfArrayByIndex(dis, ind2);
 					double s1 = MyArrayFunction.stdOfArrayByIndex(dis, ind1);
 					double s2 = MyArrayFunction.stdOfArrayByIndex(dis, ind2);
-
 					double l1 = (double) ind1.length;
 					double l2 = (double) ind2.length;
 					double q = l1 / l2;
 					double curr = 0;
-
-					if (q > 0.2 && q < 5)
+					if (q > (1 / (double) k) && q < (1 - 1 / (double) k))
 						curr = (m2 - s2 - (m1 + s1));
 					else {
 						curr = 0;
@@ -98,7 +97,7 @@ public class FeatureSelect {
 			int indx = 0;
 			for (int i = 0; i < seps.size(); i++) {
 				double q = seps.get(i).getQ();
-				if (q > 0.2 && q < 5) {
+				if (q > (1 / (double) k) && q < (1 - 1 / (double) k)) {
 					indx = i;
 					break;
 				}
@@ -110,9 +109,6 @@ public class FeatureSelect {
 				ftr[n] = data2.get(ts)[seps.get(indx).getIndex() + n];
 			}
 			Double[] dis = ComputeMatrix.computeMatrix(ftr, data2);
-			for (int i = 0; i < dis.length; i++) {
-				dis[i] = dis[i] / Math.sqrt(ql);
-			}
 			double corr = seps.get(indx).getCorr();
 			Integer[] ind1 = MyArrayFunction.findSmallerThan(dis,
 					Math.sqrt(2 * (1 - corr)));
@@ -125,17 +121,15 @@ public class FeatureSelect {
 			double s2 = MyArrayFunction.stdOfArrayByIndex(dis, ind2);
 
 			Double[] dist = ComputeMatrix.computeMatrix(ftr, data);
-			for (int i = 0; i < dist.length; i++) {
-				dist[i] = dist[i] / Math.sqrt(ql);
-			}
 			DIS.add(dist);
 			double tempACC = ClassifyFeats.classifyFeats(DIS, cls);
 			ACC.add(tempACC);
 			List<Double[]> temp = new ArrayList<Double[]>();
 			temp.add(dis);
 			accuracy = ClassifyFeats.classifyFeats(temp, cls1);
-			System.out.println("DIS accuracy:" + tempACC + " time:" + FTR);
-			System.out.println("Temp accuracy:" + accuracy + " time:" + FTR);
+			MyWriteFile.write2Log("DIS accuracy:" + tempACC + " time:" + FTR);
+			MyWriteFile.write2Log("Temp accuracy:" + accuracy + " time:" + FTR);
+			MyWriteFile.write2FTRFile(ftr, iter);
 			if (tempACC == 1) {
 				break;
 			}
@@ -180,13 +174,15 @@ public class FeatureSelect {
 					break;
 				}
 			}
-			System.out.println("Iteration Time:"
+			MyWriteFile.write2Log("Iteration Time:"
 					+ (System.currentTimeMillis() - iterationTime) + " iter:"
 					+ iter);
 			iterationTime = System.currentTimeMillis();
 			iter = iter + 1;
 		}
 		long endTime = System.currentTimeMillis();
-		System.out.println("Running Time:" + (endTime - startTime));
+		MyWriteFile.write2Log("Running Time:" + (endTime - startTime));
+		MyWriteFile.write2ACCFile(ACC);
+		MyWriteFile.write2Log("\n");
 	}
 }

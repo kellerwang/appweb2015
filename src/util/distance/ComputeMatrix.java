@@ -1,6 +1,8 @@
-package com.CDM2012;
+package util.distance;
 
 import java.util.List;
+
+import com.CDM2012.FindNN2;
 
 public class ComputeMatrix {
 	public static Double[] computeMatrix(double[] ftr, List<Double[]> data) {

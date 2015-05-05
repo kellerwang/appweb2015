@@ -4,6 +4,34 @@ import java.util.ArrayList;
 import java.util.List;
 
 public class MyArrayFunction {
+	public static int[] getIndexArrayAfterSort(Double[] dis) {
+		int[] arrayIndex = new int[dis.length];
+		for (int i = 0; i < arrayIndex.length; i++) {
+			arrayIndex[i] = i;
+		}
+		for (int i = 0; i < dis.length - 1; i++) {
+			for (int j = i + 1; j < dis.length; j++) {
+				if (dis[i] < dis[j]) {
+					double tempDouble = dis[i];
+					int p = arrayIndex[i];
+					dis[i] = dis[j];
+					arrayIndex[i] = arrayIndex[j];
+					dis[j] = tempDouble;
+					arrayIndex[j] = p;
+				}
+			}
+		}
+		return arrayIndex;
+	}
+
+	public static List<Integer> getInteger0ToNList(int n) {
+		List<Integer> result = new ArrayList<Integer>();
+		for (int i = 0; i < n; i++) {
+			result.add(i);
+		}
+		return result;
+	}
+
 	public static Integer[] findSmallerThan(Double[] data, double value) {
 		List<Integer> index = new ArrayList<Integer>();
 		for (int i = 0; i < data.length; i++) {
